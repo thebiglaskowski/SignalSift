@@ -234,7 +234,7 @@ def classify_content(
     """
     Classify content into categories for report organization.
 
-    Categories align with SEOForge suite packages for actionable insights.
+    Categories organize content for actionable insights.
 
     Args:
         text: The text content to classify.
@@ -279,44 +279,38 @@ def get_primary_categories() -> list[str]:
     return list(CATEGORY_SIGNALS.keys())
 
 
-def get_category_for_package(category: str) -> str | None:
+def get_category_group(category: str) -> str | None:
     """
-    Map a category to the most relevant SEOForge package.
+    Map a category to a broader group for organization.
 
     Returns:
-        Package name or None if not directly related.
+        Group name or None if not directly related.
     """
-    package_map = {
-        # General categories relevant to all
-        "pain_point": "All",
-        "success_story": "All",
-        "tool_comparison": "All",
-        "technique": "SniperForge",
-        "industry_news": "GEOForge",
+    group_map = {
+        # General categories
+        "pain_point": "general",
+        "success_story": "general",
+        "tool_comparison": "general",
+        "technique": "techniques",
+        "industry_news": "news",
 
-        # ProfitForge - Monetization
-        "monetization": "ProfitForge",
-        "roi_analysis": "ProfitForge",
-        "ecommerce": "ProfitForge",
+        # Monetization
+        "monetization": "monetization",
+        "roi_analysis": "monetization",
+        "ecommerce": "monetization",
 
-        # GEOForge - AI Visibility
-        "ai_visibility": "GEOForge",
+        # AI
+        "ai_visibility": "ai",
+        "ai_content": "ai",
+        "image_generation": "ai",
 
-        # KeyForge - Content Generation
-        "ai_content": "KeyForge",
+        # Technical
+        "static_sites": "technical",
+        "competitor_analysis": "competitive",
+        "content_brief": "competitive",
 
-        # ImageForge - Image Generation
-        "image_generation": "ImageForge",
-
-        # StaticForge - Static Sites
-        "static_sites": "StaticForge",
-
-        # SniperForge - Competition Analysis
-        "competitor_analysis": "SniperForge",
-        "content_brief": "SniperForge",
-
-        # SeedForge/GapForge - Keyword Research
-        "keyword_research": "SeedForge/GapForge",
-        "local_seo": "SeedForge/GapForge",
+        # Research
+        "keyword_research": "research",
+        "local_seo": "research",
     }
-    return package_map.get(category)
+    return group_map.get(category)

@@ -59,7 +59,7 @@ class FeatureGap:
     mention_count: int
     sentiment_score: float
     sample_quotes: list[str]
-    seoforge_opportunity: str | None  # Which SEOForge package could address this
+    opportunity: str | None  # Category of opportunity this represents
 
 
 @dataclass
@@ -404,18 +404,18 @@ class CompetitiveIntelligence:
         tool_stats = self.get_tool_stats(days=days)
         gaps: list[FeatureGap] = []
 
-        # Map tool categories to SEOForge packages
-        category_to_package = {
-            "backlink": "GapForge",
-            "all-in-one": "SniperForge",
-            "content": "KeyForge",
-            "keyword": "SeedForge",
-            "technical": "StaticForge",
-            "ai_content": "KeyForge",
-            "outreach": "SniperForge",
-            "rank_tracking": "GapForge",
-            "competitor": "SniperForge",
-            "ai_detection": "KeyForge",
+        # Map tool categories to opportunity types
+        category_to_opportunity = {
+            "backlink": "link_building",
+            "all-in-one": "comprehensive",
+            "content": "content_creation",
+            "keyword": "keyword_research",
+            "technical": "technical_seo",
+            "ai_content": "ai_writing",
+            "outreach": "outreach",
+            "rank_tracking": "rank_tracking",
+            "competitor": "competitive_analysis",
+            "ai_detection": "ai_detection",
         }
 
         for stats in tool_stats:
@@ -438,7 +438,7 @@ class CompetitiveIntelligence:
                             mention_count=stats.mention_count,
                             sentiment_score=stats.avg_sentiment,
                             sample_quotes=stats.complaints[:3],
-                            seoforge_opportunity=category_to_package.get(stats.category),
+                            opportunity=category_to_opportunity.get(stats.category),
                         )
                     )
 
@@ -455,7 +455,7 @@ class CompetitiveIntelligence:
                             mention_count=stats.mention_count,
                             sentiment_score=stats.avg_sentiment,
                             sample_quotes=stats.feature_requests[:3],
-                            seoforge_opportunity=category_to_package.get(stats.category),
+                            opportunity=category_to_opportunity.get(stats.category),
                         )
                     )
 

@@ -22,10 +22,10 @@ console = Console()
 @click.pass_context
 def cli(ctx: click.Context, verbose: bool) -> None:
     """
-    SignalSift - Competitive intelligence for the SEOForge ecosystem.
+    SignalSift - Personal community intelligence tool.
 
-    Scrapes Reddit and YouTube for SEO insights, caches content,
-    and generates reports for Claude AI brainstorming sessions.
+    Monitor Reddit, YouTube, and Hacker News for topics you care about.
+    Generates markdown reports for review and analysis.
     """
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose

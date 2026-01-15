@@ -231,36 +231,36 @@ class ReportGenerator:
         date_range_start = datetime.fromtimestamp(min(all_timestamps)) if all_timestamps else now
         date_range_end = datetime.fromtimestamp(max(all_timestamps)) if all_timestamps else now
 
-        # Group content by category for each SEOForge package
+        # Group content by category
         pain_points = [t for t in threads if t.category == "pain_point"]
         success_stories = [t for t in threads if t.category == "success_story"]
         tool_mentions = [t for t in threads if t.category == "tool_comparison"]
 
-        # ProfitForge - Monetization intelligence
+        # Monetization intelligence
         monetization_items = [
             t for t in threads if t.category in ("monetization", "roi_analysis", "ecommerce")
         ]
 
-        # GEOForge - AI visibility
+        # AI visibility
         ai_visibility_items = [t for t in threads if t.category == "ai_visibility"]
 
-        # SeedForge/GapForge - Keyword research
+        # Keyword research
         keyword_research_items = [
             t for t in threads if t.category in ("keyword_research", "local_seo")
         ]
 
-        # KeyForge - Content generation
+        # Content generation
         content_generation_items = [t for t in threads if t.category == "ai_content"]
 
-        # SniperForge - Competition analysis
+        # Competition analysis
         competition_items = [
             t for t in threads if t.category in ("competitor_analysis", "content_brief")
         ]
 
-        # ImageForge - Image generation
+        # Image generation
         image_generation_items = [t for t in threads if t.category == "image_generation"]
 
-        # StaticForge - Static sites and performance
+        # Static sites and performance
         static_sites_items = [t for t in threads if t.category == "static_sites"]
 
         # Sort all categories by relevance
@@ -345,27 +345,22 @@ class ReportGenerator:
                 self._thread_to_context(t, excerpt_length)
                 for t in ai_visibility_items[:max_per_section]
             ],
-            # SeedForge/GapForge - Keyword research
             "keyword_research_insights": [
                 self._thread_to_context(t, excerpt_length)
                 for t in keyword_research_items[:max_per_section]
             ],
-            # KeyForge - Content generation
             "content_generation_insights": [
                 self._thread_to_context(t, excerpt_length)
                 for t in content_generation_items[:max_per_section]
             ],
-            # SniperForge - Competition
             "competition_insights": [
                 self._thread_to_context(t, excerpt_length)
                 for t in competition_items[:max_per_section]
             ],
-            # ImageForge - Image generation
             "image_generation_insights": [
                 self._thread_to_context(t, excerpt_length)
                 for t in image_generation_items[:max_per_section]
             ],
-            # StaticForge - Static sites
             "static_sites_insights": [
                 self._thread_to_context(t, excerpt_length)
                 for t in static_sites_items[:max_per_section]
@@ -439,7 +434,7 @@ class ReportGenerator:
                         "tool": g.tool,
                         "description": g.feature_description[:100],
                         "demand": g.demand_level,
-                        "opportunity": g.seoforge_opportunity,
+                        "opportunity": g.opportunity,
                     }
                     for g in competitive_data["feature_gaps"][:5]
                 ]
@@ -468,16 +463,16 @@ class ReportGenerator:
             "score": thread.score,
             "num_comments": thread.num_comments,
             "matched_keywords": thread.matched_keywords,
-            # Package-specific insight fields (populated by AI analysis)
-            "feature_suggestion": None,     # Pain points
-            "takeaway": None,               # Success stories
-            "monetization_angle": None,     # ProfitForge
-            "geo_opportunity": None,        # GEOForge
-            "keyword_opportunity": None,    # SeedForge/GapForge
-            "content_strategy": None,       # KeyForge
-            "competitive_angle": None,      # SniperForge
-            "image_opportunity": None,      # ImageForge
-            "tech_insight": None,           # StaticForge
+            # Optional insight fields (populated by AI analysis if enabled)
+            "feature_suggestion": None,
+            "takeaway": None,
+            "monetization_angle": None,
+            "geo_opportunity": None,
+            "keyword_opportunity": None,
+            "content_strategy": None,
+            "competitive_angle": None,
+            "image_opportunity": None,
+            "tech_insight": None,
         }
 
     def _video_to_context(

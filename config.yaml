@@ -1,0 +1,116 @@
+# SignalSift Configuration
+# Environment variables in .env will override these settings
+
+# Database settings
+database:
+  path: "./data/signalsift.db"
+
+# Reddit settings
+reddit:
+  # Mode: "api" (requires credentials) or "rss" (no credentials needed)
+  # RSS mode has limitations: no score/comment counts, but works without approval
+  mode: "rss"
+
+  # Credentials are loaded from environment variables:
+  # REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET (only needed for api mode)
+  user_agent: "SignalSift/1.0 (personal research tool)"
+
+  # Scraping parameters
+  min_score: 10                    # Minimum upvotes to capture
+  min_comments: 3                  # Minimum comments
+  max_age_days: 30                 # How far back to look
+  posts_per_subreddit: 100         # Max posts per scan
+  request_delay_seconds: 2         # Delay between requests
+
+# YouTube settings
+youtube:
+  # API key loaded from YOUTUBE_API_KEY environment variable
+
+  # Scraping parameters
+  min_duration_seconds: 300        # 5 minutes minimum
+  max_duration_seconds: 5400       # 90 minutes maximum
+  max_age_days: 30
+  videos_per_channel: 10           # Recent videos to check per channel
+  include_search: true             # Also run discovery searches
+
+  # Transcript settings
+  transcript_language: "en"
+  transcript_max_length: 50000     # Truncate very long transcripts
+
+# Scoring weights
+scoring:
+  min_relevance_score: 30          # Minimum score to include in reports
+
+  weights:
+    engagement: 1.0
+    keywords: 1.2
+    content_quality: 1.0
+    source_tier: 0.8
+
+# Semantic keyword matching (spaCy)
+semantic:
+  enabled: true                     # Enable semantic expansion
+  model: "en_core_web_md"           # spaCy model to use
+  default_threshold: 0.75           # Default similarity threshold (0-1)
+  expansion_weight_factor: 0.8      # Semantic matches get 80% of parent weight
+  max_expansions_per_keyword: 5     # Max expanded terms per base keyword
+
+# Report settings
+reports:
+  output_directory: "./reports"
+  filename_format: "{date}.md"
+  max_items_per_section: 15
+  include_full_index: true
+  excerpt_length: 300
+  include_trends: true
+  include_competitive: true
+  include_rising: true
+
+# Hacker News settings
+hackernews:
+  enabled: true
+  min_points: 10
+  min_comments: 5
+  max_age_days: 30
+  request_delay_seconds: 1
+
+# Trend detection
+trends:
+  enabled: true
+  rising_threshold: 1.5
+  falling_threshold: 0.5
+  analysis_period_days: 7
+  comparison_period_days: 7
+  min_mentions: 2
+
+# Competitive intelligence
+competitive:
+  enabled: true
+  track_tool_mentions: true
+  analysis_period_days: 30
+  top_tools_limit: 10
+  feature_gaps_limit: 5
+
+# Engagement velocity
+velocity:
+  enabled: true
+  rising_threshold: 10
+  hot_threshold: 20
+  viral_threshold: 50
+
+# LLM analysis (optional - requires OPENAI_API_KEY or ANTHROPIC_API_KEY)
+llm_analysis:
+  enabled: false
+  provider: "openai"
+  model: "gpt-4o-mini"
+  max_items_per_report: 20
+  analyze_pain_points: true
+  analyze_success_stories: true
+  summarize_long_threads: true
+
+# Logging
+logging:
+  level: "INFO"
+  file: "./logs/signalsift.log"
+  max_size_mb: 10
+  backup_count: 3

@@ -1,104 +1,146 @@
-# SignalSift
+# 🔍 SignalSift
 
-Personal community intelligence tool. Monitor Reddit, YouTube, and Hacker News for topics you care about.
+**Your personal internet research assistant.** Automatically collects and organizes interesting discussions from Reddit, YouTube, and Hacker News based on topics you care about — then generates tidy markdown reports you can review at your leisure.
 
-## Features
+> *"Like having a research assistant who reads the internet for you."*
 
-- **Reddit Monitoring**: Track discussions via RSS (no API key needed) or API
-- **YouTube Tracking**: Monitor channels and search for relevant videos
-- **Hacker News**: Follow tech discussions and trends
-- **Semantic Matching**: Find related content using spaCy word vectors
-- **Trend Detection**: Identify rising topics and sentiment patterns
-- **Markdown Reports**: Generate reports for review and analysis
+## ✨ What It Does
 
-## Installation
+Ever wish you could keep tabs on online discussions without doom-scrolling? SignalSift does the heavy lifting:
+
+- 📡 **Pulls content** from subreddits, YouTube channels, and Hacker News
+- 🎯 **Filters by your keywords** so you only see relevant stuff
+- 🧠 **Finds related content** using smart semantic matching
+- 📈 **Spots trends** — what's heating up, what's cooling down
+- 📝 **Creates markdown reports** perfect for reading or feeding to AI
+
+## 🚀 Getting Started
 
 ```bash
-# Create conda environment
+# Set up your environment
 conda create -n signalsift python=3.11
 conda activate signalsift
 
-# Install package
+# Install
 pip install -e .
 
-# Download spaCy model for semantic matching
+# Grab the language model (for smart matching)
 python -m spacy download en_core_web_md
-```
 
-## Quick Start
-
-```bash
-# Initialize database with example sources
+# Initialize with example sources
 sift init
 
-# Run a scan
+# Run your first scan
 sift scan
 
-# Generate report
+# Generate a report
 sift report
-
-# Check status
-sift status
 ```
 
-## Configuration
+That's it! Check the `reports/` folder for your markdown file. 📄
 
-1. Copy `.env.example` to `.env`
-2. Add your API credentials (all optional):
-   - **Reddit**: Works without credentials using RSS mode (default)
-   - **YouTube**: Enable YouTube Data API v3 at Google Cloud Console
-   - **OpenAI/Anthropic**: For optional LLM analysis
+## ⚙️ Make It Yours
 
-3. Customize `config.yaml`:
-   - Add your subreddits of interest
-   - Add YouTube channels to monitor
-   - Configure keywords to track
-   - Adjust scoring weights
+### Add Your Sources
 
-## Reddit Modes
-
-**RSS Mode** (default - no credentials needed):
-
-```yaml
-reddit:
-  mode: "rss"
-```
-
-**API Mode** (requires approval):
-
-```yaml
-reddit:
-  mode: "api"
-```
-
-## CLI Commands
+Edit `config.yaml` or use the CLI:
 
 ```bash
-sift init              # Initialize database
-sift scan              # Scan all sources
-sift scan --reddit     # Scan Reddit only
-sift scan --youtube    # Scan YouTube only
-sift report            # Generate markdown report
-sift status            # Show database status
-sift sources list      # List configured sources
-sift sources add       # Add a source
-sift keywords list     # List keywords
-sift keywords add      # Add keywords
-sift cache clear       # Clear old cached data
+# Add a subreddit
+sift sources add reddit programming
+
+# Add a YouTube channel
+sift sources add youtube UCxyz123
+
+# See what you're tracking
+sift sources list
 ```
 
-## Project Structure
+### Set Your Keywords
+
+Tell SignalSift what to look for:
+
+```bash
+# Add keywords
+sift keywords add "machine learning" "python tips" "side project"
+
+# Check your keywords
+sift keywords list
+```
+
+### Tweak Settings
+
+All the knobs are in `config.yaml`:
+
+```yaml
+# How far back to look
+reddit:
+  max_age_days: 30
+
+# Minimum engagement to bother with
+  min_score: 10
+  min_comments: 3
+
+# Report preferences
+reports:
+  max_items_per_section: 15
+  excerpt_length: 300
+```
+
+## 🔑 API Keys (Mostly Optional!)
+
+| Service | Required? | Notes |
+|---------|-----------|-------|
+| Reddit | ❌ No | Works out of the box via RSS feeds |
+| YouTube | 🟡 Optional | Needed for video/transcript fetching |
+| OpenAI | 🟡 Optional | Enables AI-powered summaries |
+
+Copy `.env.example` to `.env` and add any keys you have.
+
+## 📋 Commands Cheatsheet
+
+| Command | What it does |
+|---------|-------------|
+| `sift init` | Set up database with starter sources |
+| `sift scan` | Fetch new content from all sources |
+| `sift scan --reddit` | Just scan Reddit |
+| `sift scan --youtube` | Just scan YouTube |
+| `sift report` | Generate a markdown report |
+| `sift status` | See database stats |
+| `sift sources list` | Show tracked sources |
+| `sift keywords list` | Show tracked keywords |
+| `sift cache clear` | Clean up old data |
+
+## 📁 Project Layout
 
 ```
 SignalSift/
-├── config.yaml         # Main configuration
-├── .env                # API credentials (not in git)
-├── data/               # SQLite database
-├── logs/               # Log files
-├── reports/            # Generated reports
-└── src/signalsift/     # Source code
+├── 📄 config.yaml      # Your settings
+├── 🔐 .env             # API keys (git-ignored)
+├── 💾 data/            # SQLite database
+├── 📋 logs/            # Debug logs
+├── 📝 reports/         # Generated reports go here
+└── 🐍 src/signalsift/  # The code
 ```
 
-## License
+## 💡 Tips
 
-MIT License - Personal use only.
+- **Start small** — Add a few sources, see what comes back, then expand
+- **Check trends** — The report shows what topics are rising/falling
+- **Use semantic matching** — SignalSift finds related terms automatically (e.g., "startup" also catches "side project", "bootstrapped")
+- **Schedule it** — Run `sift scan && sift report` in a cron job for daily digests
+
+## 🤔 FAQ
+
+**Q: Why RSS for Reddit instead of the API?**
+A: Reddit's API now requires approval. RSS works instantly with no signup.
+
+**Q: Can I use this for [topic]?**
+A: Yes! Just configure your subreddits, channels, and keywords in `config.yaml`.
+
+**Q: Where do reports go?**
+A: The `reports/` folder. Each report is dated (e.g., `2025-01-14.md`).
+
+---
+
+Built for personal use. MIT License. 🛠️

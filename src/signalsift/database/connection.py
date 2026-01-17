@@ -61,6 +61,11 @@ def initialize_database(populate_defaults: bool = True) -> None:
             _populate_default_sources(conn)
             _populate_default_keywords(conn)
 
+    # Run any pending migrations
+    from signalsift.database.migrations import migrate
+
+    migrate()
+
 
 def _populate_default_sources(conn: sqlite3.Connection) -> None:
     """Populate default Reddit subreddits and YouTube channels."""

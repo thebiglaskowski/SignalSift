@@ -3,7 +3,7 @@
 import re
 from datetime import datetime
 
-from signalsift.database.models import RedditThread, YouTubeVideo
+from signalsift.database.models import HackerNewsItem, RedditThread, YouTubeVideo
 from signalsift.database.queries import get_sources_by_type
 from signalsift.processing.classification import classify_content
 from signalsift.processing.keywords import (
@@ -415,16 +415,16 @@ def calculate_hackernews_score(
 def process_hackernews_item(
     item: ContentItem,
     matcher: KeywordMatcher | None = None,
-) -> dict:
+) -> HackerNewsItem:
     """
-    Process a Hacker News content item: score it, classify it, return data dict.
+    Process a Hacker News content item: score it, classify it, and convert to model.
 
     Args:
         item: ContentItem from the HackerNews source.
-        matcher: Optional KeywordMatcher instance.
+        matcher: Optional KeywordMatcher instance. Uses default if not provided.
 
     Returns:
-        Dict with processed HN item data ready for database insertion.
+        Fully processed HackerNewsItem model.
     """
     import hashlib
     from datetime import datetime
@@ -450,20 +450,20 @@ def process_hackernews_item(
     # Classify content
     category = classify_content(full_text, matches)
 
-    return {
-        "id": item.id,
-        "title": item.title,
-        "author": item.metadata.get("author"),
-        "story_text": item.content,
-        "url": item.url,
-        "external_url": item.metadata.get("external_url"),
-        "points": item.metadata.get("points", 0),
-        "num_comments": item.metadata.get("num_comments", 0),
-        "created_utc": int(item.created_at.timestamp()),
-        "story_type": item.metadata.get("story_type", "story"),
-        "captured_at": int(datetime.now().timestamp()),
-        "content_hash": content_hash,
-        "relevance_score": relevance_score,
-        "matched_keywords": matcher.get_matched_keywords(matches),
-        "category": category,
-    }
+    return HackerNewsItem(
+        id=item.id,
+        title=item.title,
+        author=item.metadata.get("author"),
+        story_text=item.content,
+        url=item.url,
+        external_url=item.metadata.get("external_url"),
+        points=item.metadata.get("points", 0),
+        num_comments=item.metadata.get("num_comments", 0),
+        created_utc=int(item.created_at.timestamp()),
+        story_type=item.metadata.get("story_type", "story"),
+        captured_at=int(datetime.now().timestamp()),
+        content_hash=content_hash,
+        relevance_score=relevance_score,
+        matched_keywords=matcher.get_matched_keywords(matches),
+        category=category,
+    )

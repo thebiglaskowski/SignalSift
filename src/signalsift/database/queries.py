@@ -7,6 +7,7 @@ from typing import Any
 
 from signalsift.database.connection import get_connection
 from signalsift.database.models import (
+    HackerNewsItem,
     Keyword,
     ProcessingLogEntry,
     RedditThread,
@@ -178,12 +179,17 @@ def hackernews_exists(item_id: str) -> bool:
         return cursor.fetchone() is not None
 
 
-def insert_hackernews_item(data: dict) -> None:
+def insert_hackernews_item(item: HackerNewsItem | dict) -> None:
     """Insert a new Hacker News item into the cache."""
     with get_connection() as conn:
-        # Convert matched_keywords list to JSON
-        if "matched_keywords" in data and isinstance(data["matched_keywords"], list):
-            data["matched_keywords"] = json.dumps(data["matched_keywords"])
+        # Support both model and dict (for backwards compatibility)
+        if isinstance(item, HackerNewsItem):
+            data = item.to_db_dict()
+        else:
+            data = item.copy()
+            # Convert matched_keywords list to JSON
+            if "matched_keywords" in data and isinstance(data["matched_keywords"], list):
+                data["matched_keywords"] = json.dumps(data["matched_keywords"])
 
         columns = ", ".join(data.keys())
         placeholders = ", ".join("?" * len(data))
@@ -199,7 +205,7 @@ def get_hackernews_items(
     processed: bool | None = None,
     story_type: str | None = None,
     limit: int | None = None,
-) -> list[dict]:
+) -> list[HackerNewsItem]:
     """
     Get Hacker News items with optional filters.
 
@@ -209,6 +215,9 @@ def get_hackernews_items(
         processed: Filter by processed status.
         story_type: Filter by story type (story, ask_hn, show_hn).
         limit: Maximum number of items to return.
+
+    Returns:
+        List of HackerNewsItem models.
     """
     query = "SELECT * FROM hackernews_items WHERE 1=1"
     params: list[Any] = []
@@ -237,17 +246,7 @@ def get_hackernews_items(
 
     with get_connection() as conn:
         cursor = conn.execute(query, params)
-        items = []
-        for row in cursor.fetchall():
-            item = dict(row)
-            # Parse JSON fields
-            if item.get("matched_keywords"):
-                try:
-                    item["matched_keywords"] = json.loads(item["matched_keywords"])
-                except json.JSONDecodeError:
-                    item["matched_keywords"] = []
-            items.append(item)
-        return items
+        return [HackerNewsItem(**dict(row)) for row in cursor.fetchall()]
 
 
 # =============================================================================

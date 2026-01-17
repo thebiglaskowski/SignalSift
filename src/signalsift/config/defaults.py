@@ -96,42 +96,211 @@ DEFAULT_YOUTUBE_CHANNELS = {
 }
 
 # =============================================================================
-# DEFAULT KEYWORDS - Example keywords (customize for your interests)
+# DEFAULT KEYWORDS - Actionable, specific signals for content discovery
 # =============================================================================
+# Guidelines for effective keywords:
+# - Prefer phrases over single words (more specific context)
+# - Include intent indicators (asking, sharing, comparing)
+# - Avoid generic terms that match too broadly
 
 DEFAULT_KEYWORDS = {
+    # === High-Value Signals (1.5 weight) ===
     "success_signals": [
+        # Specific achievement patterns
         "finally figured out",
-        "breakthrough",
+        "my strategy for",
+        "case study",
+        "increased by",
+        "grew from",
+        "results after",
+        "what worked for me",
+        "breakthrough moment",
         "game changer",
         "highly recommend",
-        "works great",
-        "solved it",
         "success story",
+        "turned around",
+        # Specific metrics
+        "traffic increased",
+        "revenue grew",
+        "conversion rate",
+        "ranked for",
     ],
     "pain_points": [
+        # Problem indicators
         "struggling with",
-        "frustrated",
-        "need help",
-        "doesn't work",
-        "any alternatives",
-        "looking for",
-        "problem with",
+        "frustrated by",
+        "can't figure out",
+        "doesn't work anymore",
+        "stopped working",
+        "any alternatives to",
+        "looking for replacement",
+        "need help with",
+        "what am I doing wrong",
+        "hit a wall",
+        "wasted time on",
+        "disappointed with",
+        # Specific problem contexts
+        "traffic dropped",
+        "rankings fell",
+        "not getting results",
+        "algorithm update",
     ],
-    "tools": [
-        "tool",
-        "app",
-        "software",
-        "service",
-        "platform",
-        "solution",
+
+    # === Core Tool Categories (1.2-1.3 weight) ===
+    "tool_mentions": [
+        # Comparison patterns
+        "switched from",
+        "moved to",
+        "better than",
+        "compared to",
+        "vs",
+        "alternative to",
+        # Tool discovery patterns
+        "started using",
+        "been using",
+        "recommend for",
+        "best tool for",
+        "favorite tool",
+        # Named tools (competitors to monitor)
+        "Ahrefs",
+        "Semrush",
+        "Moz",
+        "Surfer SEO",
+        "Clearscope",
+        "Frase",
+        "Jasper",
+        "Copy.ai",
     ],
+    "keyword_research": [
+        # Research activities
+        "keyword research",
+        "finding keywords",
+        "keyword difficulty",
+        "search volume",
+        "long-tail keywords",
+        "keyword gap",
+        "competitor keywords",
+        "keyword clustering",
+        # Intent patterns
+        "how to find keywords",
+        "best keywords for",
+        "keyword strategy",
+    ],
+    "content_generation": [
+        # AI content patterns
+        "AI content",
+        "AI writing",
+        "content at scale",
+        "automated content",
+        "AI detection",
+        "human-like content",
+        "content optimization",
+        "content brief",
+        # Workflow patterns
+        "content workflow",
+        "content calendar",
+        "batch content",
+    ],
+    "monetization": [
+        # Revenue patterns
+        "affiliate income",
+        "display ads",
+        "AdSense revenue",
+        "Mediavine",
+        "AdThrive",
+        "sponsored content",
+        "monetization strategy",
+        # Specific metrics
+        "RPM",
+        "EPMV",
+        "affiliate commission",
+        "passive income site",
+        "niche site income",
+    ],
+    "ai_visibility": [
+        # AI search patterns
+        "AI search",
+        "ChatGPT",
+        "Perplexity",
+        "AI answer",
+        "AI overview",
+        "AI citation",
+        "featured in AI",
+        "optimizing for AI",
+        "GEO",
+        "generative engine optimization",
+        "AI SEO",
+        "LLM optimization",
+    ],
+    "competition": [
+        # Competitive analysis
+        "competitor analysis",
+        "competitor research",
+        "competitive edge",
+        "outrank competitors",
+        "competitor backlinks",
+        "SERP analysis",
+        "ranking factors",
+        "domain authority",
+        "topical authority",
+    ],
+
+    # === Supporting Categories (1.1-1.2 weight) ===
+    "techniques": [
+        # Specific tactics
+        "link building",
+        "guest posting",
+        "broken link",
+        "skyscraper technique",
+        "content hub",
+        "pillar page",
+        "internal linking",
+        "schema markup",
+        "technical SEO",
+        "site audit",
+        "crawl budget",
+    ],
+    "image_generation": [
+        "AI images",
+        "image optimization",
+        "alt text",
+        "image SEO",
+        "Midjourney",
+        "DALL-E",
+        "Stable Diffusion",
+        "stock photos",
+    ],
+    "ecommerce": [
+        "product pages",
+        "category SEO",
+        "ecommerce SEO",
+        "product descriptions",
+        "Amazon SEO",
+        "Shopify SEO",
+        "conversion optimization",
+    ],
+    "local_seo": [
+        "local SEO",
+        "Google Business",
+        "local pack",
+        "NAP consistency",
+        "local citations",
+        "local keywords",
+        "near me",
+        "service area",
+    ],
+
+    # === Trend/News Signals (1.0 weight) ===
     "trends": [
-        "trending",
-        "new release",
         "just launched",
+        "new feature",
+        "beta access",
+        "early adopter",
         "announcement",
-        "update",
-        "beta",
+        "update released",
+        "major change",
+        "industry news",
+        "Google update",
+        "algorithm change",
     ],
 }

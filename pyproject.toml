@@ -47,6 +47,9 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.7.0",
 ]
+semantic = [
+    "faiss-cpu>=1.7.4",
+]
 
 [project.scripts]
 sift = "signalsift.cli.main:cli"

@@ -201,3 +201,69 @@ class ProcessingLogEntry(BaseModel):
     source_type: str | None = None
     source_id: str | None = None
     details: str | None = None
+
+
+class HackerNewsItem(BaseModel):
+    """Model for a Hacker News item."""
+
+    id: str  # Format: "hn_<object_id>"
+    title: str
+    author: str | None = None
+    story_text: str | None = None  # Content for Ask HN / Show HN posts
+    url: str  # HN discussion URL
+    external_url: str | None = None  # External link if any
+    points: int = 0
+    num_comments: int = 0
+    created_utc: int
+    story_type: str = "story"  # "story", "ask_hn", "show_hn"
+    captured_at: int = Field(default_factory=lambda: int(datetime.now().timestamp()))
+    content_hash: str | None = None
+    relevance_score: float = 0.0
+    matched_keywords: list[str] = Field(default_factory=list)
+    category: str | None = None
+    processed: bool = False
+    report_id: str | None = None
+
+    @field_validator("matched_keywords", mode="before")
+    @classmethod
+    def parse_keywords(cls, v: Any) -> list[str]:
+        """Parse keywords from JSON string if needed."""
+        if isinstance(v, str):
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        return v or []
+
+    def to_db_dict(self) -> dict[str, Any]:
+        """Convert to dictionary for database insertion."""
+        return {
+            "id": self.id,
+            "title": self.title,
+            "author": self.author,
+            "story_text": self.story_text,
+            "url": self.url,
+            "external_url": self.external_url,
+            "points": self.points,
+            "num_comments": self.num_comments,
+            "created_utc": self.created_utc,
+            "story_type": self.story_type,
+            "captured_at": self.captured_at,
+            "content_hash": self.content_hash,
+            "relevance_score": self.relevance_score,
+            "matched_keywords": json.dumps(self.matched_keywords),
+            "category": self.category,
+            "processed": 1 if self.processed else 0,
+            "report_id": self.report_id,
+        }
+
+    @property
+    def created_datetime(self) -> datetime:
+        """Get created_utc as datetime."""
+        return datetime.fromtimestamp(self.created_utc)
+
+    @property
+    def hn_url(self) -> str:
+        """Get HN discussion URL."""
+        item_id = self.id.replace("hn_", "")
+        return f"https://news.ycombinator.com/item?id={item_id}"

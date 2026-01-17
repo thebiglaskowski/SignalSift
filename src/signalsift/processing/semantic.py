@@ -19,6 +19,8 @@ if TYPE_CHECKING:
     from spacy.language import Language
     from spacy.vocab import Vocab
 
+    from signalsift.processing.vector_index import VocabVectorIndex
+
 logger = get_logger(__name__)
 
 # Default spaCy model - medium model includes word vectors
@@ -74,7 +76,8 @@ class SemanticExpander:
     Expands keywords using spaCy word vectors for semantic similarity.
 
     This class provides the core functionality for finding semantically
-    similar terms to expand the base keyword set.
+    similar terms to expand the base keyword set. Uses FAISS for fast
+    approximate nearest neighbor search when available.
     """
 
     model_name: str = DEFAULT_MODEL
@@ -84,11 +87,28 @@ class SemanticExpander:
         default_factory=dict, repr=False
     )
     _model_loaded: bool = field(default=False, repr=False)
+    _vector_index: "VocabVectorIndex | None" = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         """Initialize the expander and attempt to load the model."""
         self._load_model()
         self._load_cache()
+        self._init_vector_index()
+
+    def _init_vector_index(self) -> None:
+        """Initialize FAISS vector index if available."""
+        from signalsift.processing.vector_index import VocabVectorIndex
+
+        self._vector_index = VocabVectorIndex(cache_dir=self.cache_dir)
+
+        if self._model_loaded and self._nlp is not None:
+            if self._vector_index.is_available:
+                self._vector_index.build_from_vocab(self._nlp.vocab)
+            else:
+                logger.info(
+                    "FAISS not installed. Semantic search will use slower brute-force. "
+                    "Install with: pip install faiss-cpu"
+                )
 
     @property
     def is_available(self) -> bool:
@@ -262,7 +282,7 @@ class SemanticExpander:
         max_results: int,
     ) -> list[tuple[str, float]]:
         """
-        Find similar words in the vocabulary using vector similarity.
+        Find similar words using FAISS index (fast) or fallback to brute force.
 
         Args:
             doc: The spaCy Doc object for the keyword.
@@ -272,19 +292,29 @@ class SemanticExpander:
         Returns:
             List of (term, similarity_score) tuples.
         """
+        # Try FAISS first (O(log n))
+        if self._vector_index is not None and self._vector_index.is_built:
+            return self._vector_index.search(
+                doc.vector,
+                k=max_results,
+                threshold=threshold,
+            )
+
+        # Fallback to brute force (O(n)) - only for small vocabs or no FAISS
+        logger.debug("Using brute-force similarity search (consider installing faiss-cpu)")
+        return self._brute_force_search(doc, threshold, max_results)
+
+    def _brute_force_search(
+        self,
+        doc: spacy.tokens.Doc,
+        threshold: float,
+        max_results: int,
+    ) -> list[tuple[str, float]]:
+        """Original brute-force implementation for fallback."""
         similar: list[tuple[str, float]] = []
 
-        # Use most_similar if available (spaCy 3.x)
-        # Otherwise fall back to manual vocab search
         try:
-            # Get the average vector for multi-word phrases
-            query_vector = doc.vector
-
-            # Search through vocabulary for similar words
-            # Note: This is computationally expensive for large vocabs
-            # In production, consider using approximate nearest neighbors
             vocab = self._nlp.vocab
-
             candidates: list[tuple[str, float]] = []
 
             # Iterate through vocab strings that have vectors

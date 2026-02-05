@@ -1,5 +1,9 @@
 # SignalSift
 
+<p align="center">
+  <img src="assets/signalsift.png" alt="Claude Conductor Logo" width="600">
+</p>
+
 **Your personal internet research assistant.** Automatically collects and organizes interesting discussions from Reddit, YouTube, and Hacker News based on topics you care about — then generates tidy markdown reports you can review at your leisure.
 
 > *"Like having a research assistant who reads the internet for you."*

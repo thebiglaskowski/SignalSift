@@ -18,11 +18,11 @@ Ever wish you could keep tabs on online discussions without doom-scrolling? Sign
 ## Getting Started
 
 ```bash
-# Set up your environment
-conda create -n signalsift python=3.11
-conda activate signalsift
+# Set up your environment (using uv - https://github.com/astral-sh/uv)
+uv venv
+uv pip install -e .
 
-# Install
+# Or with traditional pip
 pip install -e .
 
 # Grab the language model (for smart matching)
@@ -155,8 +155,10 @@ pip install -e ".[dev]"
 pytest tests/ -v
 
 # Run with coverage
-pytest tests/ -v --cov=signalsift --cov-report=term-missing
+pytest tests/ -v --cov=src/signalsift --cov-report=term-missing
 ```
+
+**Test Coverage:** 80% (740+ tests)
 
 ### Database Migrations
 

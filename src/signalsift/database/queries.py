@@ -1,7 +1,6 @@
 """Database query functions for SignalSift."""
 
 import json
-import sqlite3
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -41,6 +40,35 @@ def insert_reddit_thread(thread: RedditThread) -> None:
             f"INSERT OR REPLACE INTO reddit_threads ({columns}) VALUES ({placeholders})",
             tuple(data.values()),
         )
+
+
+def insert_reddit_threads_batch(threads: list[RedditThread]) -> int:
+    """
+    Insert multiple Reddit threads in a single transaction.
+
+    Args:
+        threads: List of RedditThread models to insert.
+
+    Returns:
+        Number of threads inserted.
+    """
+    if not threads:
+        return 0
+
+    with get_connection() as conn:
+        # Get column structure from first thread
+        first_data = threads[0].to_db_dict()
+        columns = ", ".join(first_data.keys())
+        placeholders = ", ".join("?" * len(first_data))
+
+        # Prepare all data
+        all_data = [tuple(t.to_db_dict().values()) for t in threads]
+
+        conn.executemany(
+            f"INSERT OR REPLACE INTO reddit_threads ({columns}) VALUES ({placeholders})",
+            all_data,
+        )
+        return len(threads)
 
 
 def get_reddit_threads(
@@ -115,6 +143,35 @@ def insert_youtube_video(video: YouTubeVideo) -> None:
             f"INSERT OR REPLACE INTO youtube_videos ({columns}) VALUES ({placeholders})",
             tuple(data.values()),
         )
+
+
+def insert_youtube_videos_batch(videos: list[YouTubeVideo]) -> int:
+    """
+    Insert multiple YouTube videos in a single transaction.
+
+    Args:
+        videos: List of YouTubeVideo models to insert.
+
+    Returns:
+        Number of videos inserted.
+    """
+    if not videos:
+        return 0
+
+    with get_connection() as conn:
+        # Get column structure from first video
+        first_data = videos[0].to_db_dict()
+        columns = ", ".join(first_data.keys())
+        placeholders = ", ".join("?" * len(first_data))
+
+        # Prepare all data
+        all_data = [tuple(v.to_db_dict().values()) for v in videos]
+
+        conn.executemany(
+            f"INSERT OR REPLACE INTO youtube_videos ({columns}) VALUES ({placeholders})",
+            all_data,
+        )
+        return len(videos)
 
 
 def get_youtube_videos(
@@ -197,6 +254,46 @@ def insert_hackernews_item(item: HackerNewsItem | dict) -> None:
             f"INSERT OR REPLACE INTO hackernews_items ({columns}) VALUES ({placeholders})",
             tuple(data.values()),
         )
+
+
+def insert_hackernews_items_batch(items: list[HackerNewsItem | dict]) -> int:
+    """
+    Insert multiple Hacker News items in a single transaction.
+
+    Args:
+        items: List of HackerNewsItem models or dicts to insert.
+
+    Returns:
+        Number of items inserted.
+    """
+    if not items:
+        return 0
+
+    with get_connection() as conn:
+        all_data = []
+        columns = None
+        placeholders = None
+
+        for item in items:
+            if isinstance(item, HackerNewsItem):
+                data = item.to_db_dict()
+            else:
+                data = item.copy()
+                if "matched_keywords" in data and isinstance(data["matched_keywords"], list):
+                    data["matched_keywords"] = json.dumps(data["matched_keywords"])
+
+            if columns is None:
+                columns = ", ".join(data.keys())
+                placeholders = ", ".join("?" * len(data))
+
+            all_data.append(tuple(data.values()))
+
+        if columns and all_data:
+            conn.executemany(
+                f"INSERT OR REPLACE INTO hackernews_items ({columns}) VALUES ({placeholders})",
+                all_data,
+            )
+        return len(items)
 
 
 def get_hackernews_items(

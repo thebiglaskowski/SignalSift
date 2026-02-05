@@ -13,6 +13,78 @@ from signalsift.processing.keywords import (
 )
 from signalsift.sources.base import ContentItem
 
+# =============================================================================
+# Scoring Constants
+# =============================================================================
+
+# Reddit scoring constants
+REDDIT_UPVOTE_DIVISOR = 2.5  # Upvotes needed per point
+REDDIT_UPVOTE_MAX_POINTS = 20
+REDDIT_COMMENT_DIVISOR = 1.33  # Comments needed per point
+REDDIT_COMMENT_MAX_POINTS = 15
+REDDIT_VIRAL_THRESHOLD = 100  # Upvotes for viral bonus
+REDDIT_VIRAL_BONUS = 5
+REDDIT_DETAILED_POST_LENGTH = 500  # Characters for "detailed" bonus
+REDDIT_DETAILED_POST_BONUS = 5
+REDDIT_QUALITY_FLAIR_BONUS = 5
+REDDIT_METRICS_BONUS = 5
+
+# YouTube scoring constants
+YOUTUBE_VIEW_DIVISOR = 666.67  # Views needed per point (~10k = 15 pts)
+YOUTUBE_VIEW_MAX_POINTS = 15
+YOUTUBE_LIKE_DIVISOR = 50  # Likes needed per point (~500 = 10 pts)
+YOUTUBE_LIKE_MAX_POINTS = 10
+YOUTUBE_HIGH_ENGAGEMENT_RATIO = 0.04  # 4% like ratio
+YOUTUBE_HIGH_ENGAGEMENT_BONUS = 5
+YOUTUBE_OPTIMAL_DURATION_MIN = 600  # 10 minutes
+YOUTUBE_OPTIMAL_DURATION_MAX = 2400  # 40 minutes
+YOUTUBE_ACCEPTABLE_DURATION_MIN = 300  # 5 minutes
+YOUTUBE_ACCEPTABLE_DURATION_MAX = 3600  # 60 minutes
+YOUTUBE_OPTIMAL_DURATION_BONUS = 10
+YOUTUBE_ACCEPTABLE_DURATION_BONUS = 5
+YOUTUBE_TRANSCRIPT_BONUS = 5
+YOUTUBE_SUBSTANTIAL_TRANSCRIPT_LENGTH = 2000
+YOUTUBE_SUBSTANTIAL_TRANSCRIPT_BONUS = 5
+
+# Hacker News scoring constants
+HN_POINTS_DIVISOR = 2  # Points needed per score point
+HN_POINTS_MAX_POINTS = 25
+HN_COMMENT_DIVISOR = 2  # Comments needed per score point
+HN_COMMENT_MAX_POINTS = 15
+HN_ASK_BONUS = 10
+HN_SHOW_BONUS = 5
+HN_HIGH_COMMENT_RATIO = 0.5  # Comments/points ratio
+HN_HIGH_COMMENT_RATIO_BONUS = 5
+
+# Source tier bonuses
+TIER_1_REDDIT_BONUS = 10
+TIER_2_REDDIT_BONUS = 5
+TIER_1_YOUTUBE_BONUS = 15
+TIER_2_YOUTUBE_BONUS = 8
+
+# Velocity thresholds and bonuses
+VELOCITY_VIRAL_THRESHOLD = 50
+VELOCITY_VIRAL_BONUS = 15
+VELOCITY_HOT_THRESHOLD = 20
+VELOCITY_HOT_BONUS = 10
+VELOCITY_RISING_THRESHOLD = 10
+VELOCITY_RISING_BONUS = 7
+VELOCITY_ACTIVE_THRESHOLD = 5
+VELOCITY_ACTIVE_BONUS = 4
+VELOCITY_MODERATE_THRESHOLD = 2
+VELOCITY_MODERATE_BONUS = 2
+
+# Keyword scoring
+KEYWORD_MAX_MATCH_COUNT = 3
+KEYWORD_MULTIPLIER = 5
+KEYWORD_MAX_TOTAL = 35
+YOUTUBE_KEYWORD_MAX_MATCH_COUNT = 5
+YOUTUBE_KEYWORD_MULTIPLIER = 3
+
+# Engagement velocity calculation
+MIN_AGE_HOURS = 0.5  # Minimum age to avoid division issues
+COMMENT_WEIGHT = 2  # Comments weighted 2x in engagement
+
 
 def calculate_engagement_velocity(
     score: int,
@@ -38,10 +110,10 @@ def calculate_engagement_velocity(
         now = datetime.now()
 
     age_hours = (now.timestamp() - created_timestamp) / 3600
-    if age_hours < 0.5:
-        age_hours = 0.5  # Minimum 30 minutes to avoid division issues
+    if age_hours < MIN_AGE_HOURS:
+        age_hours = MIN_AGE_HOURS  # Minimum 30 minutes to avoid division issues
 
-    total_engagement = score + (comments * 2)  # Comments weighted 2x
+    total_engagement = score + (comments * COMMENT_WEIGHT)
     velocity = total_engagement / age_hours
 
     return round(velocity, 2)
@@ -57,16 +129,16 @@ def get_velocity_bonus(velocity: float) -> float:
     Returns:
         Score bonus (0-15 points).
     """
-    if velocity >= 50:
-        return 15  # Viral content
-    elif velocity >= 20:
-        return 10  # Hot content
-    elif velocity >= 10:
-        return 7  # Rising content
-    elif velocity >= 5:
-        return 4  # Active content
-    elif velocity >= 2:
-        return 2  # Moderate activity
+    if velocity >= VELOCITY_VIRAL_THRESHOLD:
+        return VELOCITY_VIRAL_BONUS  # Viral content
+    elif velocity >= VELOCITY_HOT_THRESHOLD:
+        return VELOCITY_HOT_BONUS  # Hot content
+    elif velocity >= VELOCITY_RISING_THRESHOLD:
+        return VELOCITY_RISING_BONUS  # Rising content
+    elif velocity >= VELOCITY_ACTIVE_THRESHOLD:
+        return VELOCITY_ACTIVE_BONUS  # Active content
+    elif velocity >= VELOCITY_MODERATE_THRESHOLD:
+        return VELOCITY_MODERATE_BONUS  # Moderate activity
     return 0  # Low activity
 
 
@@ -121,44 +193,40 @@ def calculate_reddit_score(
     score = 0.0
 
     # === Engagement signals (max 40 points) ===
-    # Up to 20 pts for upvotes (1 point per 2.5 upvotes, capped at 20)
-    score += min(thread.score / 2.5, 20)
+    score += min(thread.score / REDDIT_UPVOTE_DIVISOR, REDDIT_UPVOTE_MAX_POINTS)
+    score += min(thread.num_comments / REDDIT_COMMENT_DIVISOR, REDDIT_COMMENT_MAX_POINTS)
 
-    # Up to 15 pts for comments (1 point per ~1.3 comments, capped at 15)
-    score += min(thread.num_comments / 1.33, 15)
-
-    # Bonus for viral posts (100+ upvotes)
-    if thread.score > 100:
-        score += 5
+    # Bonus for viral posts
+    if thread.score > REDDIT_VIRAL_THRESHOLD:
+        score += REDDIT_VIRAL_BONUS
 
     # === Keyword matches (max 35 points) ===
     keyword_score = 0.0
     for match in keyword_matches:
-        # Weight * 5 points per match, with diminishing returns
-        keyword_score += min(match.count, 3) * match.weight * 5
-    score += min(keyword_score, 35)
+        keyword_score += min(match.count, KEYWORD_MAX_MATCH_COUNT) * match.weight * KEYWORD_MULTIPLIER
+    score += min(keyword_score, KEYWORD_MAX_TOTAL)
 
     # === Content quality signals (max 15 points) ===
     text = (thread.title or "") + " " + (thread.selftext or "")
 
-    # Has metrics/numbers (5 pts)
+    # Has metrics/numbers
     if contains_numbers(text):
-        score += 5
+        score += REDDIT_METRICS_BONUS
 
-    # Detailed post - more than 500 chars (5 pts)
-    if len(thread.selftext or "") > 500:
-        score += 5
+    # Detailed post
+    if len(thread.selftext or "") > REDDIT_DETAILED_POST_LENGTH:
+        score += REDDIT_DETAILED_POST_BONUS
 
-    # Quality flair (5 pts)
+    # Quality flair
     quality_flairs = ["case study", "success", "strategy", "results", "guide", "tutorial"]
     if thread.flair and any(f in thread.flair.lower() for f in quality_flairs):
-        score += 5
+        score += REDDIT_QUALITY_FLAIR_BONUS
 
     # === Source tier bonus (max 10 points) ===
     if source_tier == 1:
-        score += 10
+        score += TIER_1_REDDIT_BONUS
     elif source_tier == 2:
-        score += 5
+        score += TIER_2_REDDIT_BONUS
     # Tier 3 gets no bonus
 
     # === Engagement velocity bonus (max 15 points) ===
@@ -197,45 +265,42 @@ def calculate_youtube_score(
     score = 0.0
 
     # === Engagement signals (max 30 points) ===
-    # Up to 15 pts for views (normalized for SEO content)
-    score += min(video.view_count / 666.67, 15)  # ~10k views = 15 pts
+    score += min(video.view_count / YOUTUBE_VIEW_DIVISOR, YOUTUBE_VIEW_MAX_POINTS)
+    score += min(video.like_count / YOUTUBE_LIKE_DIVISOR, YOUTUBE_LIKE_MAX_POINTS)
 
-    # Up to 10 pts for likes
-    score += min(video.like_count / 50, 10)  # ~500 likes = 10 pts
-
-    # High engagement ratio bonus (>4% like ratio)
+    # High engagement ratio bonus
     if video.view_count > 0:
         like_ratio = video.like_count / video.view_count
-        if like_ratio > 0.04:
-            score += 5
+        if like_ratio > YOUTUBE_HIGH_ENGAGEMENT_RATIO:
+            score += YOUTUBE_HIGH_ENGAGEMENT_BONUS
 
     # === Keyword matches (max 35 points) ===
     keyword_score = 0.0
     for match in keyword_matches:
-        keyword_score += min(match.count, 5) * match.weight * 3  # Transcripts have more text
-    score += min(keyword_score, 35)
+        keyword_score += min(match.count, YOUTUBE_KEYWORD_MAX_MATCH_COUNT) * match.weight * YOUTUBE_KEYWORD_MULTIPLIER
+    score += min(keyword_score, KEYWORD_MAX_TOTAL)
 
     # === Content quality signals (max 20 points) ===
-    # Sweet spot duration: 10-40 minutes (10 pts)
+    # Sweet spot duration: 10-40 minutes
     duration = video.duration_seconds or 0
-    if 600 <= duration <= 2400:
-        score += 10
-    elif 300 <= duration < 600 or 2400 < duration <= 3600:
-        score += 5
+    if YOUTUBE_OPTIMAL_DURATION_MIN <= duration <= YOUTUBE_OPTIMAL_DURATION_MAX:
+        score += YOUTUBE_OPTIMAL_DURATION_BONUS
+    elif YOUTUBE_ACCEPTABLE_DURATION_MIN <= duration < YOUTUBE_OPTIMAL_DURATION_MIN or YOUTUBE_OPTIMAL_DURATION_MAX < duration <= YOUTUBE_ACCEPTABLE_DURATION_MAX:
+        score += YOUTUBE_ACCEPTABLE_DURATION_BONUS
 
-    # Transcript available (5 pts)
+    # Transcript available
     if video.transcript_available:
-        score += 5
+        score += YOUTUBE_TRANSCRIPT_BONUS
 
-    # Substantial transcript content (5 pts)
-    if video.transcript and len(video.transcript) > 2000:
-        score += 5
+    # Substantial transcript content
+    if video.transcript and len(video.transcript) > YOUTUBE_SUBSTANTIAL_TRANSCRIPT_LENGTH:
+        score += YOUTUBE_SUBSTANTIAL_TRANSCRIPT_BONUS
 
     # === Source tier bonus (max 15 points) ===
     if source_tier == 1:
-        score += 15
+        score += TIER_1_YOUTUBE_BONUS
     elif source_tier == 2:
-        score += 8
+        score += TIER_2_YOUTUBE_BONUS
     # Tier 3 gets no bonus
 
     return min(score, 100)
@@ -383,27 +448,25 @@ def calculate_hackernews_score(
 
     # === Engagement signals (max 40 points) ===
     # HN points are harder to get than Reddit upvotes
-    score += min(points / 2, 25)  # Up to 25 pts for 50+ points
-
-    # Comments are valuable on HN
-    score += min(num_comments / 2, 15)  # Up to 15 pts for 30+ comments
+    score += min(points / HN_POINTS_DIVISOR, HN_POINTS_MAX_POINTS)
+    score += min(num_comments / HN_COMMENT_DIVISOR, HN_COMMENT_MAX_POINTS)
 
     # === Keyword matches (max 35 points) ===
     keyword_score = 0.0
     for match in keyword_matches:
-        keyword_score += min(match.count, 3) * match.weight * 5
-    score += min(keyword_score, 35)
+        keyword_score += min(match.count, KEYWORD_MAX_MATCH_COUNT) * match.weight * KEYWORD_MULTIPLIER
+    score += min(keyword_score, KEYWORD_MAX_TOTAL)
 
     # === Content type bonus (max 15 points) ===
     # Ask HN often has valuable discussions
     if story_type == "ask_hn":
-        score += 10
+        score += HN_ASK_BONUS
     elif story_type == "show_hn":
-        score += 5
+        score += HN_SHOW_BONUS
 
     # High comment ratio indicates discussion-worthy content
-    if points > 0 and num_comments / points > 0.5:
-        score += 5
+    if points > 0 and num_comments / points > HN_HIGH_COMMENT_RATIO:
+        score += HN_HIGH_COMMENT_RATIO_BONUS
 
     # === Velocity bonus (max 10 points) ===
     velocity = calculate_engagement_velocity(points, num_comments, created_utc)

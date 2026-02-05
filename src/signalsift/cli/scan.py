@@ -7,7 +7,10 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from signalsift.config import get_settings
-from signalsift.database.queries import insert_reddit_thread, insert_youtube_video
+from signalsift.database.queries import (
+    insert_reddit_threads_batch,
+    insert_youtube_videos_batch,
+)
 from signalsift.exceptions import RedditError, YouTubeError
 from signalsift.processing.scoring import (
     process_hackernews_item,
@@ -120,6 +123,7 @@ def scan(
 
                 progress.update(task, description=f"Processing {len(items)} posts...")
 
+                threads_to_insert = []
                 for item in items:
                     thread = process_reddit_thread(item)
 
@@ -130,9 +134,13 @@ def scan(
                                 f"(score: {thread.relevance_score:.0f})"
                             )
                     else:
-                        insert_reddit_thread(thread)
+                        threads_to_insert.append(thread)
 
                     total_reddit += 1
+
+                # Batch insert all threads in single transaction
+                if threads_to_insert:
+                    insert_reddit_threads_batch(threads_to_insert)
 
             console.print(
                 f"[green]✓[/green] Reddit: {total_reddit} new posts"
@@ -165,6 +173,7 @@ def scan(
 
                 progress.update(task, description=f"Processing {len(items)} videos...")
 
+                videos_to_insert = []
                 for item in items:
                     video = process_youtube_video(item)
 
@@ -175,9 +184,13 @@ def scan(
                                 f"(score: {video.relevance_score:.0f})"
                             )
                     else:
-                        insert_youtube_video(video)
+                        videos_to_insert.append(video)
 
                     total_youtube += 1
+
+                # Batch insert all videos in single transaction
+                if videos_to_insert:
+                    insert_youtube_videos_batch(videos_to_insert)
 
             console.print(
                 f"[green]✓[/green] YouTube: {total_youtube} new videos"
@@ -198,7 +211,7 @@ def scan(
 
         try:
             from signalsift.sources.hackernews import HackerNewsSource
-            from signalsift.database.queries import insert_hackernews_item
+            from signalsift.database.queries import insert_hackernews_items_batch
 
             hn_source = HackerNewsSource()
 
@@ -213,6 +226,7 @@ def scan(
 
                 progress.update(task, description=f"Processing {len(items)} posts...")
 
+                hn_items_to_insert = []
                 for item in items:
                     hn_data = process_hackernews_item(item)
 
@@ -223,9 +237,13 @@ def scan(
                                 f"(score: {hn_data['relevance_score']:.0f})"
                             )
                     else:
-                        insert_hackernews_item(hn_data)
+                        hn_items_to_insert.append(hn_data)
 
                     total_hackernews += 1
+
+                # Batch insert all Hacker News items in single transaction
+                if hn_items_to_insert:
+                    insert_hackernews_items_batch(hn_items_to_insert)
 
             console.print(
                 f"[green]✓[/green] Hacker News: {total_hackernews} new posts"

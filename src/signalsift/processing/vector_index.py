@@ -6,7 +6,7 @@ replacing the O(n) brute-force vocabulary scan with O(log n) ANN search.
 
 from __future__ import annotations
 
-import pickle
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 
-INDEX_CACHE_FILE = "faiss_vocab_index.pkl"
+INDEX_CACHE_FILE = "faiss_vocab_index.json"
 FAISS_INDEX_FILE = "faiss_vocab_index.faiss"
 
 
@@ -222,8 +222,8 @@ class VocabVectorIndex:
         # Save FAISS index separately
         faiss.write_index(self._index, str(faiss_path))
 
-        with open(cache_path, "wb") as f:
-            pickle.dump(data, f)
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(data, f)
 
         logger.debug(f"Saved FAISS index cache to {cache_path}")
 
@@ -240,8 +240,8 @@ class VocabVectorIndex:
         import faiss
 
         try:
-            with open(cache_path, "rb") as f:
-                data = pickle.load(f)
+            with open(cache_path, encoding="utf-8") as f:
+                data = json.load(f)
 
             self._words = data["words"]
             self._dimension = data["dimension"]

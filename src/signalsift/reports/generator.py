@@ -3,7 +3,7 @@
 import json
 import uuid
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -179,8 +179,111 @@ class ReportGenerator:
     ) -> dict[str, Any]:
         """Build the template context from content."""
         now = datetime.now()
+        max_per_section = self.settings.reports.max_items_per_section
+        excerpt_length = self.settings.reports.excerpt_length
 
-        # Add velocity to threads for "rising" detection
+        # Build sub-contexts using helper methods
+        metadata = self._build_metadata_context(threads, videos, now)
+        categorized = self._build_categorized_content(threads, max_per_section, excerpt_length)
+        rising = self._build_rising_content(threads, excerpt_length)
+        trends = self._build_trend_data(include_trends)
+        competitive = self._build_competitive_data(include_competitive)
+        grouped = self._build_grouped_content(threads, videos, excerpt_length)
+
+        # Merge all contexts
+        context: dict[str, Any] = {}
+        context.update(metadata)
+        context.update(categorized)
+        context.update(rising)
+        context.update(trends)
+        context.update(competitive)
+        context.update(grouped)
+
+        # Add YouTube content
+        context["youtube_videos"] = [
+            self._video_to_context(v, excerpt_length) for v in videos[:max_per_section]
+        ]
+
+        return context
+
+    def _build_metadata_context(
+        self,
+        threads: list[RedditThread],
+        videos: list[YouTubeVideo],
+        now: datetime,
+    ) -> dict[str, Any]:
+        """Build report metadata context."""
+        all_timestamps = [t.created_utc for t in threads] + [v.published_at for v in videos]
+        date_range_start = datetime.fromtimestamp(min(all_timestamps)) if all_timestamps else now
+        date_range_end = datetime.fromtimestamp(max(all_timestamps)) if all_timestamps else now
+
+        # Get top themes
+        category_counts: dict[str, int] = defaultdict(int)
+        for thread in threads:
+            if thread.category:
+                category_counts[thread.category] += 1
+        for video in videos:
+            if video.category:
+                category_counts[video.category] += 1
+        top_themes = [
+            get_category_name(cat)
+            for cat, _ in sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+        ]
+
+        # Count unique sources
+        reddit_sources = len({t.subreddit for t in threads})
+        youtube_sources = len({v.channel_name or v.channel_id for v in videos})
+
+        return {
+            "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "date_range_start": date_range_start.strftime("%Y-%m-%d"),
+            "date_range_end": date_range_end.strftime("%Y-%m-%d"),
+            "sources_summary": f"{reddit_sources} subreddits, {youtube_sources} YouTube channels",
+            "version": __version__,
+            "reddit_count": len(threads),
+            "youtube_count": len(videos),
+            "new_count": len(threads) + len(videos),
+            "top_themes": top_themes,
+            "cache_stats": get_cache_stats(),
+        }
+
+    def _build_categorized_content(
+        self,
+        threads: list[RedditThread],
+        max_per_section: int,
+        excerpt_length: int,
+    ) -> dict[str, Any]:
+        """Build categorized content context."""
+        # Define category mappings
+        category_mappings = {
+            "pain_points": ["pain_point"],
+            "success_stories": ["success_story"],
+            "tool_mentions": ["tool_comparison"],
+            "monetization_insights": ["monetization", "roi_analysis", "ecommerce"],
+            "ai_visibility_insights": ["ai_visibility"],
+            "keyword_research_insights": ["keyword_research", "local_seo"],
+            "content_generation_insights": ["ai_content"],
+            "competition_insights": ["competitor_analysis", "content_brief"],
+            "image_generation_insights": ["image_generation"],
+            "static_sites_insights": ["static_sites"],
+        }
+
+        result: dict[str, Any] = {}
+        for context_key, categories in category_mappings.items():
+            items = [t for t in threads if t.category in categories]
+            items.sort(key=lambda x: x.relevance_score, reverse=True)
+            result[context_key] = [
+                self._thread_to_context(t, excerpt_length) for t in items[:max_per_section]
+            ]
+
+        return result
+
+    def _build_rising_content(
+        self,
+        threads: list[RedditThread],
+        excerpt_length: int,
+    ) -> dict[str, Any]:
+        """Build rising content context (high engagement velocity)."""
         threads_with_velocity = []
         for thread in threads:
             velocity = calculate_engagement_velocity(
@@ -188,97 +291,109 @@ class ReportGenerator:
                 thread.num_comments,
                 thread.created_utc,
             )
-            # Attach velocity as attribute for template use
-            thread_dict = {
-                "thread": thread,
-                "velocity": velocity,
-                "is_rising": velocity >= 10,  # Rising if >10 engagement/hour
-            }
-            threads_with_velocity.append(thread_dict)
+            if velocity >= 10:  # Rising if >10 engagement/hour
+                threads_with_velocity.append({"thread": thread, "velocity": velocity})
 
-        # Sort by velocity to identify rising content
-        rising_content = sorted(
-            threads_with_velocity,
-            key=lambda x: x["velocity"],
-            reverse=True,
-        )[:10]
+        # Sort by velocity
+        threads_with_velocity.sort(key=lambda x: x["velocity"], reverse=True)
 
-        # Get trend analysis if enabled
-        trends_data = None
-        if include_trends:
-            try:
-                from signalsift.processing.trends import analyze_trends
-                trends_data = analyze_trends(current_period_days=7)
-            except Exception as e:
-                logger.warning(f"Could not get trend data: {e}")
-
-        # Get competitive intelligence if enabled
-        competitive_data = None
-        if include_competitive:
-            try:
-                from signalsift.processing.competitive import get_competitive_intel
-                intel = get_competitive_intel()
-                competitive_data = {
-                    "tool_stats": intel.get_tool_stats(days=30)[:10],
-                    "feature_gaps": intel.identify_feature_gaps(days=30)[:5],
-                    "market_movers": intel.get_market_movers(days=30),
+        return {
+            "rising_content": [
+                {
+                    **self._thread_to_context(item["thread"], excerpt_length),
+                    "velocity": item["velocity"],
                 }
-            except Exception as e:
-                logger.warning(f"Could not get competitive data: {e}")
+                for item in threads_with_velocity[:10]
+            ]
+        }
 
-        # Calculate date range
-        all_timestamps = [t.created_utc for t in threads] + [v.published_at for v in videos]
-        date_range_start = datetime.fromtimestamp(min(all_timestamps)) if all_timestamps else now
-        date_range_end = datetime.fromtimestamp(max(all_timestamps)) if all_timestamps else now
+    def _build_trend_data(self, include_trends: bool) -> dict[str, Any]:
+        """Build trend analysis context."""
+        if not include_trends:
+            return {"trends": [], "emerging_trends": [], "declining_trends": [], "new_topics": []}
 
-        # Group content by category
-        pain_points = [t for t in threads if t.category == "pain_point"]
-        success_stories = [t for t in threads if t.category == "success_story"]
-        tool_mentions = [t for t in threads if t.category == "tool_comparison"]
+        try:
+            from signalsift.processing.trends import analyze_trends
+            trends_data = analyze_trends(current_period_days=7)
+        except Exception as e:
+            logger.warning(f"Could not get trend data: {e}")
+            return {"trends": [], "emerging_trends": [], "declining_trends": [], "new_topics": []}
 
-        # Monetization intelligence
-        monetization_items = [
-            t for t in threads if t.category in ("monetization", "roi_analysis", "ecommerce")
-        ]
+        return {
+            "trends": [
+                {
+                    "topic": t.topic,
+                    "change": f"+{t.change_percent}%" if t.change_percent > 0 else f"{t.change_percent}%",
+                    "direction": t.direction,
+                    "mention_count": t.current_count,
+                }
+                for t in trends_data.emerging[:5]
+            ],
+            "emerging_trends": [
+                {"topic": t.topic, "change": f"+{t.change_percent}%", "count": t.current_count}
+                for t in trends_data.emerging[:5]
+            ],
+            "declining_trends": [
+                {"topic": t.topic, "change": f"{t.change_percent}%", "count": t.current_count}
+                for t in trends_data.declining[:5]
+            ],
+            "new_topics": [
+                {"topic": t.topic, "count": t.current_count}
+                for t in trends_data.new_topics[:5]
+            ],
+        }
 
-        # AI visibility
-        ai_visibility_items = [t for t in threads if t.category == "ai_visibility"]
+    def _build_competitive_data(self, include_competitive: bool) -> dict[str, Any]:
+        """Build competitive intelligence context."""
+        empty_result = {
+            "competitive_intel": None,
+            "top_tools": [],
+            "feature_gaps": [],
+        }
 
-        # Keyword research
-        keyword_research_items = [
-            t for t in threads if t.category in ("keyword_research", "local_seo")
-        ]
+        if not include_competitive:
+            return empty_result
 
-        # Content generation
-        content_generation_items = [t for t in threads if t.category == "ai_content"]
+        try:
+            from signalsift.processing.competitive import get_competitive_intel
+            intel = get_competitive_intel()
+            competitive_data = {
+                "tool_stats": intel.get_tool_stats(days=30)[:10],
+                "feature_gaps": intel.identify_feature_gaps(days=30)[:5],
+                "market_movers": intel.get_market_movers(days=30),
+            }
+        except Exception as e:
+            logger.warning(f"Could not get competitive data: {e}")
+            return empty_result
 
-        # Competition analysis
-        competition_items = [
-            t for t in threads if t.category in ("competitor_analysis", "content_brief")
-        ]
+        return {
+            "competitive_intel": competitive_data,
+            "top_tools": [
+                {
+                    "name": s.tool_name,
+                    "mentions": s.mention_count,
+                    "sentiment": "positive" if s.avg_sentiment > 0.1 else "negative" if s.avg_sentiment < -0.1 else "neutral",
+                }
+                for s in competitive_data["tool_stats"][:5]
+            ],
+            "feature_gaps": [
+                {
+                    "tool": g.tool,
+                    "description": g.feature_description[:100],
+                    "demand": g.demand_level,
+                    "opportunity": g.opportunity,
+                }
+                for g in competitive_data["feature_gaps"][:5]
+            ],
+        }
 
-        # Image generation
-        image_generation_items = [t for t in threads if t.category == "image_generation"]
-
-        # Static sites and performance
-        static_sites_items = [t for t in threads if t.category == "static_sites"]
-
-        # Sort all categories by relevance
-        for item_list in [
-            pain_points,
-            success_stories,
-            tool_mentions,
-            monetization_items,
-            ai_visibility_items,
-            keyword_research_items,
-            content_generation_items,
-            competition_items,
-            image_generation_items,
-            static_sites_items,
-        ]:
-            item_list.sort(key=lambda x: x.relevance_score, reverse=True)
-
-        # Group by source
+    def _build_grouped_content(
+        self,
+        threads: list[RedditThread],
+        videos: list[YouTubeVideo],
+        excerpt_length: int,
+    ) -> dict[str, Any]:
+        """Build content grouped by source."""
         reddit_by_subreddit: dict[str, list[RedditThread]] = defaultdict(list)
         for thread in threads:
             reddit_by_subreddit[thread.subreddit].append(thread)
@@ -288,88 +403,7 @@ class ReportGenerator:
             channel = video.channel_name or video.channel_id
             youtube_by_channel[channel].append(video)
 
-        # Get top themes (most common categories)
-        category_counts: dict[str, int] = defaultdict(int)
-        for thread in threads:
-            if thread.category:
-                category_counts[thread.category] += 1
-        for video in videos:
-            if video.category:
-                category_counts[video.category] += 1
-
-        top_themes = [
-            get_category_name(cat)
-            for cat, _ in sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-        ]
-
-        # Get cache stats
-        cache_stats = get_cache_stats()
-
-        # Build sources summary
-        reddit_sources = len(reddit_by_subreddit)
-        youtube_sources = len(youtube_by_channel)
-        sources_summary = f"{reddit_sources} subreddits, {youtube_sources} YouTube channels"
-
-        # Limit items per section
-        max_per_section = self.settings.reports.max_items_per_section
-        excerpt_length = self.settings.reports.excerpt_length
-
         return {
-            # Report metadata
-            "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "date_range_start": date_range_start.strftime("%Y-%m-%d"),
-            "date_range_end": date_range_end.strftime("%Y-%m-%d"),
-            "sources_summary": sources_summary,
-            "version": __version__,
-            # Summary stats
-            "reddit_count": len(threads),
-            "youtube_count": len(videos),
-            "new_count": len(threads) + len(videos),
-            "top_themes": top_themes,
-            # Categorized content
-            "pain_points": [
-                self._thread_to_context(t, excerpt_length) for t in pain_points[:max_per_section]
-            ],
-            "success_stories": [
-                self._thread_to_context(t, excerpt_length)
-                for t in success_stories[:max_per_section]
-            ],
-            "tool_mentions": [
-                self._thread_to_context(t, excerpt_length) for t in tool_mentions[:max_per_section]
-            ],
-            "monetization_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in monetization_items[:max_per_section]
-            ],
-            "ai_visibility_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in ai_visibility_items[:max_per_section]
-            ],
-            "keyword_research_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in keyword_research_items[:max_per_section]
-            ],
-            "content_generation_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in content_generation_items[:max_per_section]
-            ],
-            "competition_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in competition_items[:max_per_section]
-            ],
-            "image_generation_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in image_generation_items[:max_per_section]
-            ],
-            "static_sites_insights": [
-                self._thread_to_context(t, excerpt_length)
-                for t in static_sites_items[:max_per_section]
-            ],
-            # YouTube content
-            "youtube_videos": [
-                self._video_to_context(v, excerpt_length) for v in videos[:max_per_section]
-            ],
-            # Full index
             "reddit_by_subreddit": {
                 sub: [self._thread_to_context(t, excerpt_length) for t in threads_list]
                 for sub, threads_list in reddit_by_subreddit.items()
@@ -378,70 +412,6 @@ class ReportGenerator:
                 channel: [self._video_to_context(v, excerpt_length) for v in videos_list]
                 for channel, videos_list in youtube_by_channel.items()
             },
-            # Rising content (high engagement velocity)
-            "rising_content": [
-                {
-                    **self._thread_to_context(item["thread"], excerpt_length),
-                    "velocity": item["velocity"],
-                }
-                for item in rising_content
-                if item["is_rising"]
-            ],
-            # Trend analysis
-            "trends": (
-                [
-                    {
-                        "topic": t.topic,
-                        "change": f"+{t.change_percent}%" if t.change_percent > 0 else f"{t.change_percent}%",
-                        "direction": t.direction,
-                        "mention_count": t.current_count,
-                    }
-                    for t in trends_data.emerging[:5]
-                ]
-                if trends_data
-                else []
-            ),
-            "emerging_trends": (
-                [{"topic": t.topic, "change": f"+{t.change_percent}%", "count": t.current_count}
-                 for t in trends_data.emerging[:5]]
-                if trends_data else []
-            ),
-            "declining_trends": (
-                [{"topic": t.topic, "change": f"{t.change_percent}%", "count": t.current_count}
-                 for t in trends_data.declining[:5]]
-                if trends_data else []
-            ),
-            "new_topics": (
-                [{"topic": t.topic, "count": t.current_count} for t in trends_data.new_topics[:5]]
-                if trends_data else []
-            ),
-            # Competitive intelligence
-            "competitive_intel": competitive_data,
-            "top_tools": (
-                [
-                    {
-                        "name": s.tool_name,
-                        "mentions": s.mention_count,
-                        "sentiment": "positive" if s.avg_sentiment > 0.1 else "negative" if s.avg_sentiment < -0.1 else "neutral",
-                    }
-                    for s in competitive_data["tool_stats"][:5]
-                ]
-                if competitive_data else []
-            ),
-            "feature_gaps": (
-                [
-                    {
-                        "tool": g.tool,
-                        "description": g.feature_description[:100],
-                        "demand": g.demand_level,
-                        "opportunity": g.opportunity,
-                    }
-                    for g in competitive_data["feature_gaps"][:5]
-                ]
-                if competitive_data else []
-            ),
-            # Cache stats
-            "cache_stats": cache_stats,
         }
 
     def _thread_to_context(

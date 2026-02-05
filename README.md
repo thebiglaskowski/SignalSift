@@ -18,27 +18,32 @@ Ever wish you could keep tabs on online discussions without doom-scrolling? Sign
 ## Getting Started
 
 ```bash
-# Set up your environment (using uv - https://github.com/astral-sh/uv)
+# Install uv if you haven't (https://docs.astral.sh/uv/)
+curl -LsSf https://astral.sh/uv/install.sh | sh   # macOS/Linux
+# or: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"  # Windows
+
+# Clone and set up
+git clone https://github.com/thebiglaskowski/SignalSift.git
+cd SignalSift
+
+# Create virtual environment and install dependencies
 uv venv
 uv pip install -e .
 
-# Or with traditional pip
-pip install -e .
-
 # Grab the language model (for smart matching)
-python -m spacy download en_core_web_md
+uv run python -m spacy download en_core_web_md
 
 # Optional: Install FAISS for faster semantic search (10-100x speedup)
-pip install faiss-cpu
+uv pip install faiss-cpu
 
 # Initialize with example sources
-sift init
+uv run sift init
 
 # Run your first scan
-sift scan
+uv run sift scan
 
 # Generate a report
-sift report
+uv run sift report
 ```
 
 That's it! Check the `reports/` folder for your markdown file.
@@ -122,6 +127,8 @@ Copy `.env.example` to `.env` and add any keys you have.
 
 ```
 SignalSift/
+├── pyproject.toml        # Project config & dependencies
+├── uv.lock               # Locked dependencies
 ├── config.yaml           # Your settings
 ├── .env                  # API keys (git-ignored)
 ├── data/                 # SQLite database
@@ -133,7 +140,7 @@ SignalSift/
 │   ├── processing/       # Scoring, semantic matching, classification
 │   ├── sources/          # Reddit, YouTube, HackerNews adapters
 │   └── utils/            # Retry logic, logging, text utilities
-└── tests/                # Test suite
+└── tests/                # Test suite (740+ tests)
 ```
 
 ## Tips
@@ -141,7 +148,7 @@ SignalSift/
 - **Start small** — Add a few sources, see what comes back, then expand
 - **Check trends** — The report shows what topics are rising/falling
 - **Use semantic matching** — SignalSift finds related terms automatically (e.g., "startup" also catches "side project", "bootstrapped")
-- **Schedule it** — Run `sift scan && sift report` in a cron job for daily digests
+- **Schedule it** — Run `uv run sift scan && uv run sift report` in a cron job for daily digests
 
 ## Development
 
@@ -149,16 +156,20 @@ SignalSift/
 
 ```bash
 # Install dev dependencies
-pip install -e ".[dev]"
+uv pip install -e ".[dev]"
 
 # Run tests
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run with coverage
-pytest tests/ -v --cov=src/signalsift --cov-report=term-missing
+uv run pytest tests/ -v --cov=src/signalsift --cov-report=term-missing
 ```
 
 **Test Coverage:** 80% (740+ tests)
+
+### Why uv?
+
+[uv](https://docs.astral.sh/uv/) is a fast Python package installer and resolver written in Rust. It's 10-100x faster than pip and handles virtual environments seamlessly.
 
 ### Database Migrations
 
